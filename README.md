@@ -12,13 +12,6 @@ npm run dev   # server on http://localhost:3001
 ### Open the Frontend
 open frontend/index.html （or Live Server）
 
-## System Architecture
-
-┌──────────────┐       HTTP/MQTT        ┌──────────────┐       REST API        ┌───────────────────┐
-│ Sensor Layer │  ───────────────────▶  │  Backend API │  ─────────────────▶   │ Web Frontend UI   │
-│ (Simulated)  │                        │(Express + DB)│                       │ (HTML/CSS/JS)     │
-└──────────────┘                        └──────────────┘                       └───────────────────┘
-
 ## Contributors
 Sandy Zishan Peng
 Wenqian Wu
