@@ -1,0 +1,17 @@
+# ---- Node ----
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ---- SQLite ----
+backend/rooms.db
+
+# ---- macOS ----
+.DS_Store
+
+# ---- VS Code ----
+.vscode/
+
+# ---- Logs ----
+*.log
+logs/

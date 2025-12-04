@@ -1,0 +1,51 @@
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #111;
+  color: #f5f5f5;
+  padding: 24px;
+}
+
+h1 {
+  margin-bottom: 16px;
+}
+
+button {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 16px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+
+th,
+td {
+  border: 1px solid #444;
+  padding: 8px;
+  text-align: left;
+}
+
+tr:nth-child(even) {
+  background: #1c1c1c;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.badge-free {
+  background-color: #2e7d32; /* grönt */
+  color: white;
+}
+
+.badge-occupied {
+  background-color: #c62828; /* rött */
+  color: white;
+}
