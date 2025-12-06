@@ -27,6 +27,29 @@ app.post("/updateRoom", (req, res) => {
   );
 });
 
+app.post("/addRoom", (req, res) => {
+  const { name } = req.body;
+  const trimmed = (name || "").trim();
+
+  if (!trimmed) {
+    return res.status(400).json({ error: "Room name is required" });
+  }
+
+  db.run(
+    "INSERT INTO rooms (name, occupied) VALUES (?, 0)",
+    [trimmed],
+    function (err) {
+      if (err) return res.status(500).json({ error: err.message });
+
+      res.status(201).json({
+        id: this.lastID,
+        name: trimmed,
+        occupied: 0,
+      });
+    }
+  );
+});
+
 app.listen(3001, () => {
   console.log("Backend running on port http://localhost:3001");
 });

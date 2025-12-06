@@ -91,11 +91,48 @@ async function toggleRoom(id, currentlyOccupied) {
   }
 }
 
+async function addRoom() {
+  const input = document.getElementById("newRoomName");
+  const statusLabel = document.getElementById("statusMessage");
+  const name = input.value.trim();
+
+  if (!name) {
+    statusLabel.textContent = "Please enter a room name.";
+    return;
+  }
+
+  statusLabel.textContent = "Adding room...";
+
+  try {
+    const res = await fetch(`${API_BASE}/addRoom`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Server error");
+    }
+
+    input.value = "";
+    statusLabel.textContent = "Room added.";
+    await loadRooms();
+  } catch (err) {
+    console.error(err);
+    statusLabel.textContent = "Failed to add room.";
+  }
+}
+
+
 // --- Init on page load ---
 document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("refreshBtn")
     .addEventListener("click", loadRooms);
+
+  document
+    .getElementById("addRoomBtn")
+    .addEventListener("click", addRoom);
 
   loadRooms(); // Load immediately when the page opens
 });
