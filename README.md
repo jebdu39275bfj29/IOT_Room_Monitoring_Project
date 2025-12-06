@@ -12,7 +12,7 @@ open frontend/index.html （or Live Server）
 
 # Below are Git ###
 
-## Create Brach (First time):
+## Create your Brach:
  - git checkout -b "Your_Branch_Name"
 
 ## Enter Branch: 
@@ -51,6 +51,9 @@ open frontend/index.html （or Live Server）
 # After Merge: Update Your Local Main
  - git checkout main
  - git pull origin main
+ - git branch -d Your_Branch_Name
+(Delete and Create new branch every time after merge to keep Main stable and clean)
+
 
 
 
