@@ -1,9 +1,14 @@
+console.log("🌟 Frontend script is loaded!");
+
 const API_BASE = "http://localhost:3001";
 
+// --- Load and render rooms into the table ---
 async function loadRooms() {
   const tbody = document.querySelector("#roomsTable tbody");
   const statusLabel = document.getElementById("statusMessage");
+  const summaryLabel = document.getElementById("summaryText");
 
+  // Temporary row while loading
   tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
 
   try {
@@ -25,7 +30,7 @@ async function loadRooms() {
       nameTd.textContent = room.name;
       tr.appendChild(nameTd);
 
-      // Status (badge)
+      // Status badge
       const statusTd = document.createElement("td");
       const badge = document.createElement("span");
       badge.classList.add("badge");
@@ -43,12 +48,16 @@ async function loadRooms() {
       const actionTd = document.createElement("td");
       const btn = document.createElement("button");
       btn.textContent = room.occupied ? "Set Free" : "Set Occupied";
-      btn.onclick = () => toggleRoom(room.id, room.occupied);
+      btn.addEventListener("click", () => toggleRoom(room.id, room.occupied));
       actionTd.appendChild(btn);
       tr.appendChild(actionTd);
 
       tbody.appendChild(tr);
     });
+
+    const totalRooms = rooms.length;
+    const occupiedRooms = rooms.filter((r) => r.occupied).length;
+    summaryLabel.textContent = `${occupiedRooms} of ${totalRooms} rooms occupied`;
 
     statusLabel.textContent = "";
   } catch (err) {
@@ -59,6 +68,7 @@ async function loadRooms() {
   }
 }
 
+// --- Toggle room status and reload table ---
 async function toggleRoom(id, currentlyOccupied) {
   const statusLabel = document.getElementById("statusMessage");
   statusLabel.textContent = "Updating...";
@@ -81,10 +91,11 @@ async function toggleRoom(id, currentlyOccupied) {
   }
 }
 
+// --- Init on page load ---
 document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("refreshBtn")
     .addEventListener("click", loadRooms);
 
-  loadRooms(); // Ladda direkt när sidan öppnas
+  loadRooms(); // Load immediately when the page opens
 });
