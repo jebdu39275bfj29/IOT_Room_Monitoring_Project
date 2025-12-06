@@ -44,14 +44,28 @@ async function loadRooms() {
       statusTd.appendChild(badge);
       tr.appendChild(statusTd);
 
-      // Action button
+      // Action cell
       const actionTd = document.createElement("td");
-      const btn = document.createElement("button");
-      btn.textContent = room.occupied ? "Set Free" : "Set Occupied";
-      btn.addEventListener("click", () => toggleRoom(room.id, room.occupied));
-      actionTd.appendChild(btn);
+
+      // Toggle-knapp
+      const toggleBtn = document.createElement("button");
+      toggleBtn.textContent = room.occupied ? "Set Free" : "Set Occupied";
+      toggleBtn.onclick = () => toggleRoom(room.id, room.occupied);
+      actionTd.appendChild(toggleBtn);
+
+      // Mellanrum
+      actionTd.appendChild(document.createTextNode(" "));
+
+      // Delete-knapp
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "Delete";
+      deleteBtn.classList.add("delete-btn");
+      deleteBtn.onclick = () => deleteRoom(room.id);
+      actionTd.appendChild(deleteBtn);
+
       tr.appendChild(actionTd);
 
+      // 🔴 Viktig rad: lägg in raden i tabellen!
       tbody.appendChild(tr);
     });
 
@@ -123,6 +137,28 @@ async function addRoom() {
   }
 }
 
+async function deleteRoom(id) {
+  const statusLabel = document.getElementById("statusMessage");
+
+  const sure = confirm("Are you sure you want to delete this room?");
+  if (!sure) return;
+
+  statusLabel.textContent = "Deleting room...";
+
+  try {
+    await fetch(`${API_BASE}/deleteRoom`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ room_id: id }),
+    });
+
+    statusLabel.textContent = "Room deleted.";
+    await loadRooms(); // ladda om listan + summary
+  } catch (err) {
+    console.error(err);
+    statusLabel.textContent = "Failed to delete room.";
+  }
+}
 
 // --- Init on page load ---
 document.addEventListener("DOMContentLoaded", () => {
