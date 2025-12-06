@@ -70,3 +70,23 @@ tr:nth-child(even) {
   color: #ccc;
 }
 
+#controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+#addRoom input {
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #666;
+  background: #111;
+  color: #f5f5f5;
+}
+
+#addRoom button {
+  margin-left: 8px;
+}
+
+
