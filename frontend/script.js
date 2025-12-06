@@ -17,12 +17,12 @@ async function loadRooms() {
 
     tbody.innerHTML = "";
 
-    rooms.forEach((room) => {
+    rooms.forEach((room, index) => {
       const tr = document.createElement("tr");
 
       // ID
       const idTd = document.createElement("td");
-      idTd.textContent = room.id;
+      idTd.textContent = index + 1;
       tr.appendChild(idTd);
 
       // Name
@@ -65,7 +65,6 @@ async function loadRooms() {
 
       tr.appendChild(actionTd);
 
-      // 🔴 Viktig rad: lägg in raden i tabellen!
       tbody.appendChild(tr);
     });
 
