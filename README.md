@@ -52,7 +52,7 @@ open frontend/index.html （or Live Server）
  - git checkout main
  - git pull origin main
  - git branch -d Your_Branch_Name
-(Delete and Create new branch every time after merge to keep Main stable and clean)
+(OBS! Optional: Delete and Create your branch after merge to keep Main stable and clean)
 
 
 
