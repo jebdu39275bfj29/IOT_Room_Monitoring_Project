@@ -2,26 +2,14 @@ console.log("🌟 Frontend script is loaded!");
 
 const API_BASE = "http://localhost:3001";
 
-function formatTimestamp(ts) {
-  if (!ts) return "-";
-  // SQLite datetime('now') gives "YYYY-MM-DD HH:MM:SS"
-  return ts;
-}
-
-function applyFilters(rooms) {
-  const search = (document.getElementById("searchInput")?.value || "")
+function getQuery() {
+  return (document.getElementById("searchInput")?.value || "")
     .trim()
     .toLowerCase();
-  const filter = document.getElementById("filterSelect")?.value || "all";
+}
 
-  return rooms.filter((r) => {
-    const nameOk = !search || String(r.name).toLowerCase().includes(search);
-    const statusOk =
-      filter === "all" ||
-      (filter === "occupied" && r.occupied) ||
-      (filter === "free" && !r.occupied);
-    return nameOk && statusOk;
-  });
+function getFilterValue() {
+  return (document.getElementById("statusFilter")?.value || "all").toLowerCase();
 }
 
 async function loadRooms() {
@@ -29,29 +17,24 @@ async function loadRooms() {
   const statusLabel = document.getElementById("statusMessage");
   const summaryLabel = document.getElementById("summaryText");
 
-  const searchInput = document.getElementById("searchInput");
-  const statusFilter = document.getElementById("statusFilter");
+  const query = getQuery();
+  const filterValue = getFilterValue();
 
-  const query = (searchInput?.value || "").trim().toLowerCase();
-  const filterValue = (statusFilter?.value || "all").toLowerCase();
-
-  //（ID, Name, Status, Last Updated, Action）
   tbody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
 
   try {
-    const res = await fetch(`${API_BASE}/rooms`);
+    const res = await fetch(`${API_BASE}/rooms`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`GET /rooms failed: ${res.status}`);
     const rooms = await res.json();
 
-    // Summary
+    // Summary ska baseras på ALLA rooms
     const totalRooms = rooms.length;
     const occupiedRooms = rooms.filter((r) => !!r.occupied).length;
-    if (summaryLabel) {
-      summaryLabel.textContent = `${occupiedRooms} of ${totalRooms} rooms occupied`;
-    }
+    if (summaryLabel) summaryLabel.textContent = `${occupiedRooms} of ${totalRooms} rooms occupied`;
 
-    //（Search + Status）
+    // Filter + Search
     const filtered = rooms.filter((room) => {
-      const roomName = (room.name || "").toLowerCase();
+      const roomName = String(room.name || "").toLowerCase();
       const nameMatch = query === "" ? true : roomName.includes(query);
 
       let statusMatch = true;
@@ -69,12 +52,12 @@ async function loadRooms() {
       return;
     }
 
-    filtered.forEach((room) => {
+    filtered.forEach((room, index) => {
       const tr = document.createElement("tr");
 
       // ID
       const idTd = document.createElement("td");
-      idTd.textContent = room.id;
+      idTd.textContent = index + 1;// radnummer i tabellen
       tr.appendChild(idTd);
 
       // Name
@@ -96,7 +79,7 @@ async function loadRooms() {
       statusTd.appendChild(badge);
       tr.appendChild(statusTd);
 
-      // Last Updated
+      // Last updated
       const updatedTd = document.createElement("td");
       updatedTd.textContent = room.last_updated ? room.last_updated : "-";
       tr.appendChild(updatedTd);
@@ -105,16 +88,18 @@ async function loadRooms() {
       const actionTd = document.createElement("td");
 
       const toggleBtn = document.createElement("button");
+      toggleBtn.type = "button";
       toggleBtn.textContent = room.occupied ? "Set Free" : "Set Occupied";
-      toggleBtn.onclick = () => toggleRoom(room.id, room.occupied);
+      toggleBtn.addEventListener("click", () => toggleRoom(Number(room.id), !!room.occupied));
       actionTd.appendChild(toggleBtn);
 
       actionTd.appendChild(document.createTextNode(" "));
 
       const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
       deleteBtn.textContent = "Delete";
       deleteBtn.classList.add("delete-btn");
-      deleteBtn.onclick = () => deleteRoom(room.id);
+      deleteBtn.addEventListener("click", () => deleteRoom(Number(room.id)));
       actionTd.appendChild(deleteBtn);
 
       tr.appendChild(actionTd);
@@ -129,21 +114,17 @@ async function loadRooms() {
   }
 }
 
-
-// --- Toggle room status and reload table ---
 async function toggleRoom(id, currentlyOccupied) {
   const statusLabel = document.getElementById("statusMessage");
   statusLabel.textContent = "Updating...";
 
   try {
-    await fetch(`${API_BASE}/updateRoom`, {
+    const res = await fetch(`${API_BASE}/updateRoom`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        room_id: id,
-        occupied: currentlyOccupied ? 0 : 1,
-      }),
+      body: JSON.stringify({ room_id: id, occupied: currentlyOccupied ? 0 : 1 }),
     });
+    if (!res.ok) throw new Error(`POST /updateRoom failed: ${res.status}`);
 
     statusLabel.textContent = "Room updated.";
     await loadRooms();
@@ -156,7 +137,7 @@ async function toggleRoom(id, currentlyOccupied) {
 async function addRoom() {
   const input = document.getElementById("newRoomName");
   const statusLabel = document.getElementById("statusMessage");
-  const name = input.value.trim();
+  const name = (input?.value || "").trim();
 
   if (!name) {
     statusLabel.textContent = "Please enter a room name.";
@@ -176,7 +157,7 @@ async function addRoom() {
       statusLabel.textContent = "Room name already exists.";
       return;
     }
-    if (!res.ok) throw new Error("Server error");
+    if (!res.ok) throw new Error(`POST /addRoom failed: ${res.status}`);
 
     input.value = "";
     statusLabel.textContent = "Room added.";
@@ -190,17 +171,33 @@ async function addRoom() {
 async function deleteRoom(id) {
   const statusLabel = document.getElementById("statusMessage");
 
-  const sure = confirm("Are you sure you want to delete this room?");
+  const sure = confirm(`Är du säker att du vill ta bort room id=${id}?`);
   if (!sure) return;
 
   statusLabel.textContent = "Deleting room...";
 
   try {
-    await fetch(`${API_BASE}/deleteRoom`, {
+    console.log("🗑️ Deleting room id:", id);
+
+    const res = await fetch(`${API_BASE}/deleteRoom`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ room_id: id }),
     });
+
+    const text = await res.text();
+    let data = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { error: text };
+    }
+
+    if (!res.ok) {
+      console.error("Delete failed:", res.status, data);
+      statusLabel.textContent = data.error || `Failed to delete room (${res.status}).`;
+      return;
+    }
 
     statusLabel.textContent = "Room deleted.";
     await loadRooms();
@@ -210,15 +207,11 @@ async function deleteRoom(id) {
   }
 }
 
-/// --- Init on page load ---
 document.addEventListener("DOMContentLoaded", () => {
-  // Basic buttons
   document.getElementById("refreshBtn")?.addEventListener("click", loadRooms);
   document.getElementById("addRoomBtn")?.addEventListener("click", addRoom);
 
-  // Search / Filter / Clear
   document.getElementById("searchBtn")?.addEventListener("click", loadRooms);
-
   document.getElementById("statusFilter")?.addEventListener("change", loadRooms);
 
   document.getElementById("clearBtn")?.addEventListener("click", () => {
@@ -229,11 +222,9 @@ document.addEventListener("DOMContentLoaded", () => {
     loadRooms();
   });
 
-  // enter
   document.getElementById("searchInput")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") loadRooms();
   });
 
-  // First load
   loadRooms();
 });

@@ -6,7 +6,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Get all rooms
 app.get("/rooms", (req, res) => {
   db.all("SELECT * FROM rooms ORDER BY id ASC", [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -14,7 +13,6 @@ app.get("/rooms", (req, res) => {
   });
 });
 
-// Update room status + last_updated
 app.post("/updateRoom", (req, res) => {
   const { room_id, occupied } = req.body;
 
@@ -22,24 +20,19 @@ app.post("/updateRoom", (req, res) => {
     return res.status(400).json({ error: "room_id and occupied are required" });
   }
 
-  updateRoom(room_id, occupied, (err) => {
+  updateRoom(room_id, occupied, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
+    if (result.changes === 0) return res.status(404).json({ error: "Room not found" });
     res.json({ message: "Room updated" });
   });
 });
 
-// Add room (name must be unique)
 app.post("/addRoom", (req, res) => {
-  const { name } = req.body;
-  const trimmed = (name || "").trim();
-
-  if (!trimmed) {
-    return res.status(400).json({ error: "Room name is required" });
-  }
+  const trimmed = String(req.body?.name || "").trim();
+  if (!trimmed) return res.status(400).json({ error: "Room name is required" });
 
   addRoom(trimmed, (err, room) => {
     if (err) {
-      // UNIQUE constraint error
       if (String(err.message).includes("UNIQUE")) {
         return res.status(409).json({ error: "Room name already exists" });
       }
@@ -49,20 +42,22 @@ app.post("/addRoom", (req, res) => {
   });
 });
 
-// Delete room
 app.post("/deleteRoom", (req, res) => {
   const { room_id } = req.body;
 
-  if (!room_id) {
+  console.log("DELETE request received:", req.body); // <-- VIKTIG LOGG
+
+  if (room_id === undefined) {
     return res.status(400).json({ error: "room_id is required" });
   }
 
-  deleteRoom(room_id, (err) => {
+  deleteRoom(room_id, (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
+    if (result.changes === 0) return res.status(404).json({ error: "Room not found" });
     res.json({ message: "Room deleted" });
   });
 });
 
 app.listen(3001, () => {
-  console.log("Backend running on port http://localhost:3001");
+  console.log("Backend running on http://localhost:3001");
 });
