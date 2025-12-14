@@ -2,27 +2,79 @@ console.log("🌟 Frontend script is loaded!");
 
 const API_BASE = "http://localhost:3001";
 
-// --- Load and render rooms into the table ---
+function formatTimestamp(ts) {
+  if (!ts) return "-";
+  // SQLite datetime('now') gives "YYYY-MM-DD HH:MM:SS"
+  return ts;
+}
+
+function applyFilters(rooms) {
+  const search = (document.getElementById("searchInput")?.value || "")
+    .trim()
+    .toLowerCase();
+  const filter = document.getElementById("filterSelect")?.value || "all";
+
+  return rooms.filter((r) => {
+    const nameOk = !search || String(r.name).toLowerCase().includes(search);
+    const statusOk =
+      filter === "all" ||
+      (filter === "occupied" && r.occupied) ||
+      (filter === "free" && !r.occupied);
+    return nameOk && statusOk;
+  });
+}
+
 async function loadRooms() {
   const tbody = document.querySelector("#roomsTable tbody");
   const statusLabel = document.getElementById("statusMessage");
   const summaryLabel = document.getElementById("summaryText");
 
-  // Temporary row while loading
-  tbody.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+  const searchInput = document.getElementById("searchInput");
+  const statusFilter = document.getElementById("statusFilter");
+
+  const query = (searchInput?.value || "").trim().toLowerCase();
+  const filterValue = (statusFilter?.value || "all").toLowerCase();
+
+  //（ID, Name, Status, Last Updated, Action）
+  tbody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
 
   try {
     const res = await fetch(`${API_BASE}/rooms`);
     const rooms = await res.json();
 
+    // Summary
+    const totalRooms = rooms.length;
+    const occupiedRooms = rooms.filter((r) => !!r.occupied).length;
+    if (summaryLabel) {
+      summaryLabel.textContent = `${occupiedRooms} of ${totalRooms} rooms occupied`;
+    }
+
+    //（Search + Status）
+    const filtered = rooms.filter((room) => {
+      const roomName = (room.name || "").toLowerCase();
+      const nameMatch = query === "" ? true : roomName.includes(query);
+
+      let statusMatch = true;
+      if (filterValue === "occupied") statusMatch = !!room.occupied;
+      if (filterValue === "free") statusMatch = !room.occupied;
+
+      return nameMatch && statusMatch;
+    });
+
     tbody.innerHTML = "";
 
-    rooms.forEach((room, index) => {
+    if (filtered.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='5'>No rooms match your search.</td></tr>";
+      if (statusLabel) statusLabel.textContent = "";
+      return;
+    }
+
+    filtered.forEach((room) => {
       const tr = document.createElement("tr");
 
       // ID
       const idTd = document.createElement("td");
-      idTd.textContent = index + 1;
+      idTd.textContent = room.id;
       tr.appendChild(idTd);
 
       // Name
@@ -44,19 +96,21 @@ async function loadRooms() {
       statusTd.appendChild(badge);
       tr.appendChild(statusTd);
 
-      // Action cell
+      // Last Updated
+      const updatedTd = document.createElement("td");
+      updatedTd.textContent = room.last_updated ? room.last_updated : "-";
+      tr.appendChild(updatedTd);
+
+      // Action
       const actionTd = document.createElement("td");
 
-      // Toggle-knapp
       const toggleBtn = document.createElement("button");
       toggleBtn.textContent = room.occupied ? "Set Free" : "Set Occupied";
       toggleBtn.onclick = () => toggleRoom(room.id, room.occupied);
       actionTd.appendChild(toggleBtn);
 
-      // Mellanrum
       actionTd.appendChild(document.createTextNode(" "));
 
-      // Delete-knapp
       const deleteBtn = document.createElement("button");
       deleteBtn.textContent = "Delete";
       deleteBtn.classList.add("delete-btn");
@@ -64,22 +118,17 @@ async function loadRooms() {
       actionTd.appendChild(deleteBtn);
 
       tr.appendChild(actionTd);
-
       tbody.appendChild(tr);
     });
 
-    const totalRooms = rooms.length;
-    const occupiedRooms = rooms.filter((r) => r.occupied).length;
-    summaryLabel.textContent = `${occupiedRooms} of ${totalRooms} rooms occupied`;
-
-    statusLabel.textContent = "";
+    if (statusLabel) statusLabel.textContent = "";
   } catch (err) {
     console.error(err);
-    tbody.innerHTML =
-      "<tr><td colspan='4'>Failed to load rooms</td></tr>";
-    statusLabel.textContent = "Error contacting backend.";
+    tbody.innerHTML = "<tr><td colspan='5'>Failed to load rooms</td></tr>";
+    if (statusLabel) statusLabel.textContent = "Error contacting backend.";
   }
 }
+
 
 // --- Toggle room status and reload table ---
 async function toggleRoom(id, currentlyOccupied) {
@@ -123,9 +172,11 @@ async function addRoom() {
       body: JSON.stringify({ name }),
     });
 
-    if (!res.ok) {
-      throw new Error("Server error");
+    if (res.status === 409) {
+      statusLabel.textContent = "Room name already exists.";
+      return;
     }
+    if (!res.ok) throw new Error("Server error");
 
     input.value = "";
     statusLabel.textContent = "Room added.";
@@ -152,22 +203,37 @@ async function deleteRoom(id) {
     });
 
     statusLabel.textContent = "Room deleted.";
-    await loadRooms(); // ladda om listan + summary
+    await loadRooms();
   } catch (err) {
     console.error(err);
     statusLabel.textContent = "Failed to delete room.";
   }
 }
 
-// --- Init on page load ---
+/// --- Init on page load ---
 document.addEventListener("DOMContentLoaded", () => {
-  document
-    .getElementById("refreshBtn")
-    .addEventListener("click", loadRooms);
+  // Basic buttons
+  document.getElementById("refreshBtn")?.addEventListener("click", loadRooms);
+  document.getElementById("addRoomBtn")?.addEventListener("click", addRoom);
 
-  document
-    .getElementById("addRoomBtn")
-    .addEventListener("click", addRoom);
+  // Search / Filter / Clear
+  document.getElementById("searchBtn")?.addEventListener("click", loadRooms);
 
-  loadRooms(); // Load immediately when the page opens
+  document.getElementById("statusFilter")?.addEventListener("change", loadRooms);
+
+  document.getElementById("clearBtn")?.addEventListener("click", () => {
+    const searchInput = document.getElementById("searchInput");
+    const statusFilter = document.getElementById("statusFilter");
+    if (searchInput) searchInput.value = "";
+    if (statusFilter) statusFilter.value = "all";
+    loadRooms();
+  });
+
+  // enter
+  document.getElementById("searchInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") loadRooms();
+  });
+
+  // First load
+  loadRooms();
 });
