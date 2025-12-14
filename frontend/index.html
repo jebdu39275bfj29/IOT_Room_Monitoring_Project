@@ -2,32 +2,57 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Room Occupancy Dashboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <h1>IoT Room Occupancy Monitoring</h1>
 
   <!-- Summary, ex. "2 of 4 rooms occupied" -->
   <p id="summaryText"></p>
 
-  <button id="refreshBtn">Refresh rooms</button>
+  <!-- Top actions -->
+  <div class="controls">
+    <button id="refreshBtn">Refresh rooms</button>
 
-  <div id="addRoom">
-    <input
-      type="text"
-      id="newRoomName"
-      placeholder="New room name"
-    />
-    <button id="addRoomBtn">Add room</button>
+    <div id="addRoom">
+      <input
+        type="text"
+        id="newRoomName"
+        placeholder="New room name"
+      />
+      <button id="addRoomBtn">Add room</button>
+    </div>
+
+    <!-- Search + filter -->
+    <div id="searchControls">
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search room name..."
+      />
+
+      <select id="statusFilter">
+        <option value="all">All</option>
+        <option value="occupied">Occupied</option>
+        <option value="free">Free</option>
+      </select>
+
+      <button id="searchBtn">Search</button>
+      <button id="clearBtn">Clear</button>
+    </div>
   </div>
 
+  <!-- Rooms table -->
   <table id="roomsTable">
     <thead>
       <tr>
         <th>ID</th>
         <th>Room Name</th>
         <th>Status</th>
+        <th>Last Updated</th>
         <th>Action</th>
       </tr>
     </thead>
