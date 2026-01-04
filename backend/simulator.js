@@ -1,36 +1,164 @@
-const axios = require('axios'); // 我们需要安装这个库来发送请求
+const axios = require('axios');
 
 const API_BASE = "http://localhost:3001";
 
+/**
+ * ======================
+ * IoT Device Information
+ * ======================
+ */
+const DEVICE_ID = "sensor-node-001";
+const SENSOR_INTERVAL = 5000;      // 5 秒采样
+const HEARTBEAT_INTERVAL = 15000;  // 15 秒心跳
+
+/**
+ * ======================
+ * Finite State Machine
+ * ======================
+ */
+const STATES = {
+    EMPTY: "EMPTY",
+    POSSIBLE: "POSSIBLY_OCCUPIED",
+    OCCUPIED: "OCCUPIED"
+};
+
+/**
+ * 本地缓存（模拟 IoT 设备断网）
+ */
+let cachedState = {};
+
+/**
+ * ======================
+ * Simulate IoT Sensors
+ * ======================
+ * 5% 概率模拟传感器故障
+ */
+function simulateSensorData() {
+    if (Math.random() < 0.05) {
+        return null; // 传感器故障
+    }
+
+    return {
+        pir: Math.random() > 0.7 ? 1 : 0,
+        co2: 400 + Math.random() * 800,
+        sound: 20 + Math.random() * 50,
+        light: Math.random() * 500
+    };
+}
+
+/**
+ * ======================
+ * Edge-side FSM Inference
+ * ======================
+ */
+function inferState(sensors, lastState) {
+    if (!sensors) {
+        console.log(`[IoT][${DEVICE_ID}] Sensor failure → keep last state`);
+        return lastState;
+    }
+
+    if (sensors.pir === 1) {
+        return STATES.OCCUPIED;
+    }
+
+    if (sensors.co2 > 800) {
+        return STATES.POSSIBLE;
+    }
+
+    if (sensors.co2 < 600 && sensors.sound < 35) {
+        return STATES.EMPTY;
+    }
+
+    return lastState;
+}
+
+/**
+ * FSM → occupied (DB compatible)
+ */
+function stateToOccupied(state) {
+    return state === STATES.OCCUPIED ? 1 : 0;
+}
+
+/**
+ * ======================
+ * Main Sensor Simulation
+ * ======================
+ */
 async function simulateSensors() {
     try {
-        // 1. 获取所有房间
         const res = await axios.get(`${API_BASE}/rooms`);
         const rooms = res.data;
 
         if (rooms.length === 0) {
-            console.log("No rooms found. Please add a room on the website first!");
+            console.log(`[IoT][${DEVICE_ID}] No rooms available`);
             return;
         }
 
-        // 2. 随机选择一个房间
-        const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
-        
-        // 3. 随机切换状态 (0 为空闲, 1 为占用)
-        const newStatus = randomRoom.occupied ? 0 : 1;
+        const room = rooms[Math.floor(Math.random() * rooms.length)];
+        const sensors = simulateSensorData();
 
-        // 4. 发送更新请求到后端
-        await axios.post(`${API_BASE}/updateRoom`, {
-            room_id: randomRoom.id,
-            occupied: newStatus
-        });
+        const lastState = cachedState[room.id] || STATES.EMPTY;
+        const newState = inferState(sensors, lastState);
+        const occupied = stateToOccupied(newState);
 
-        console.log(`[Sensor] ${randomRoom.name} changed to ${newStatus ? 'Occupied' : 'Free'}`);
-    } catch (error) {
-        console.error("Simulator Error:", error.message);
+        try {
+            await axios.post(`${API_BASE}/updateRoom`, {
+                room_id: room.id,
+                occupied: occupied
+            });
+
+            cachedState[room.id] = newState;
+
+        } catch (netErr) {
+            console.log(`[IoT][${DEVICE_ID}] Network error → using cached state`);
+            cachedState[room.id] = lastState;
+        }
+
+        if (sensors) {
+            console.log(
+                `[IoT][${DEVICE_ID}] Room:${room.name} ` +
+                `PIR:${sensors.pir} ` +
+                `CO2:${sensors.co2.toFixed(0)}ppm ` +
+                `Sound:${sensors.sound.toFixed(0)}dB ` +
+                `State:${newState}`
+            );
+        } else {
+            console.log(
+                `[IoT][${DEVICE_ID}] Room:${room.name} ` +
+                `State unchanged (${newState})`
+            );
+        }
+
+    } catch (err) {
+        console.error(
+            `[IoT][${DEVICE_ID}] Simulator Error:`,
+            err.response?.data || err.message
+        );
     }
 }
 
-// 每 5 秒模拟一次传感器数据
-console.log("IoT Sensor Simulator started...");
-setInterval(simulateSensors, 5000);
+/**
+ * ======================
+ * Device Heartbeat
+ * ======================
+ */
+async function sendHeartbeat() {
+    try {
+        await axios.post(`${API_BASE}/heartbeat`, {
+            device_id: DEVICE_ID,
+            timestamp: new Date().toISOString()
+        });
+        console.log(`[IoT][${DEVICE_ID}] Heartbeat sent`);
+    } catch (err) {
+        console.log(`[IoT][${DEVICE_ID}] Heartbeat failed`);
+    }
+}
+
+/**
+ * ======================
+ * Start IoT Simulator
+ * ======================
+ */
+console.log(`[IoT][${DEVICE_ID}] Simulator started`);
+setInterval(simulateSensors, SENSOR_INTERVAL);
+setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
