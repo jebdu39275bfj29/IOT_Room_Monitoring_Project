@@ -56,19 +56,15 @@ function inferState(sensors, lastState) {
         console.log(`[IoT][${DEVICE_ID}] Sensor failure → keep last state`);
         return lastState;
     }
+    if (sensors.pir === 1) {return STATES.OCCUPIED;}
 
-    if (sensors.pir === 1) {
-        return STATES.OCCUPIED;
-    }
+    const highCO2 = sensors.co2 > 800;
+    const noisy = sensors.sound > 45;
+    const bright = sensors.light > 200;
 
-    if (sensors.co2 > 800) {
-        return STATES.POSSIBLE;
-    }
-
-    if (sensors.co2 < 600 && sensors.sound < 35) {
-        return STATES.EMPTY;
-    }
-
+    if (highCO2 && (noisy || bright)) {return STATES.POSSIBLE;}
+    if (sensors.co2 < 600 && sensors.sound < 35 && sensors.light < 120) {
+        return STATES.EMPTY;}
     return lastState;
 }
 
